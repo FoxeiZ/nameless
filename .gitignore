@@ -1,0 +1,9 @@
+.venv
+.vscode
+__pycache__
+
+unusedstuff
+*test*
+
+bg.jpg
+out.jpg
