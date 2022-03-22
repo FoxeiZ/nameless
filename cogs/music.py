@@ -64,15 +64,13 @@ class InvalidVoiceChannel(VoiceConnectionError):
 class Dropdown(nextcord.ui.Select):
 
     def __init__(self, data = None):
-        options = (nextcord.SelectOption(label=data[0]['title'], description=data[0]['url'], value=0),
-                   nextcord.SelectOption(label=data[1]['title'], description=data[1]['url'], value=1),
-                   nextcord.SelectOption(label=data[2]['title'], description=data[2]['url'], value=2),
-                   nextcord.SelectOption(label=data[3]['title'], description=data[3]['url'], value=3),
-                   nextcord.SelectOption(label=data[4]['title'], description=data[4]['url'], value=4),
-                   nextcord.SelectOption(label='Select all', value='All')
-        )
         
-        super().__init__(placeholder='owo', min_values=1, max_values=5, options=options)
+        options = []
+        for index, item in enumerate(data):
+            options.append(nextcord.SelectOption(label=item['title'], description=item['url'], value=index))
+        options.append(nextcord.SelectOption(label='Select all', value='All', description='Selected items from above will be exclude from playlist'))
+
+        super().__init__(placeholder='owo', min_values=1, max_values=len(options), options=options)
     
     async def callback(self, interaction: Interaction):
         self._view.stop()
@@ -212,7 +210,6 @@ class MusicPlayer:
                 self.next.clear()
 
                 if not self._loop or self.source is None:
-                    self.current = None
                     self.source = await self.queue.get()
 
                 self.current = await YTDLSource.regather_stream(self.source, loop=self.client.loop)
@@ -239,6 +236,7 @@ class MusicPlayer:
                 await self.next.wait()
 
                 # Make sure the FFmpeg process is cleaned up.
+                self.current = None
                 self.current.cleanup()
                 print('release', gc.collect())
 
@@ -276,23 +274,6 @@ class Music(commands.Cog):
         except KeyError:
             pass
 
-        print(self.players)
-    
-    async def __local_check(self, interaction: Interaction):
-        """A local check which applies to all commands in this cog."""
-        if not interaction.guild:
-            raise commands.NoPrivateMessage
-    
-    async def __error(self, interaction: Interaction, error):
-        """A local error handler for all errors arising from commands in this cog."""
-        if isinstance(error, commands.NoPrivateMessage):
-            try:
-                return await interaction.send('This command can not be used in Private Messages.')
-            except nextcord.HTTPException:
-                pass
-        elif isinstance(error, InvalidVoiceChannel):
-            await interaction.send('Please make sure you are in a valid channel or provide me with one')
-    
     def get_player(self, interaction: Interaction):
         """Retrieve the guild player, or generate one."""
         try:
@@ -314,12 +295,16 @@ class Music(commands.Cog):
         try:
             if len(player._guild.voice_client.channel.members) == 1: # If bot is alone
                 await self.cleanup(player._guild)
-                await player._channel.send('Hic. Don\' leave me alone :cry:')
+                await player._channel.send('Hic. Don\'t leave me alone :cry:')
         except AttributeError:
             await self.cleanup(player._guild)
+
+    @nextcord.slash_command(guild_ids=[890026104277057577], description="moozic command")
+    async def music(interaction: nextcord.Interaction):
+        pass
     
-    @nextcord.slash_command(name='connect', guild_ids=[890026104277057577], force_global=True)
-    async def connect_(self, interaction: Interaction, 
+    @music.subcommand(description='placeholder')
+    async def connect(self, interaction: Interaction, 
         channel: nextcord.abc.GuildChannel = SlashOption(name='channel', description='Join where?', required=False, channel_types=[nextcord.ChannelType.voice])
     ):
         """Connect to voice.
@@ -355,8 +340,8 @@ class Music(commands.Cog):
         self.get_player(interaction)
         await interaction.send(f'Connected to: **{channel}**', delete_after=20)
 
-    @nextcord.slash_command(name='play', guild_ids=[890026104277057577], force_global=True)
-    async def play_(self, interaction: Interaction,
+    @music.subcommand(description='placeholder')
+    async def play(self, interaction: Interaction,
         url = SlashOption(description='URL go brrrrr', required=True),
         picker: bool = SlashOption(description='Show a dropdown menu', required=False, default=False)
     ):
@@ -366,7 +351,7 @@ class Music(commands.Cog):
         vc = interaction.guild.voice_client
         try:
             if not vc:
-                await self.connect_.invoke_user(interaction, member=None)
+                await self.connect.invoke_slash(interaction, channel=None)
         except InvalidVoiceChannel:
             return
 
@@ -376,8 +361,8 @@ class Music(commands.Cog):
             player.totaldura += source['duration']
             await player.queue.put(source)
 
-    @nextcord.slash_command(name='pause', guild_ids=[890026104277057577], force_global=True)
-    async def pause_(self, interaction: Interaction):
+    @music.subcommand(description='placeholder')
+    async def pause(self, interaction: Interaction):
         """Pause the currently playing song."""
         vc = interaction.guild.voice_client
 
@@ -390,8 +375,8 @@ class Music(commands.Cog):
         vc.pause()
         await interaction.send(f'**`{interaction.user}`**: Paused the song!')
 
-    @nextcord.slash_command(name='resume', guild_ids=[890026104277057577], force_global=True)
-    async def resume_(self, interaction: Interaction):
+    @music.subcommand(description='placeholder')
+    async def resume(self, interaction: Interaction):
         """Resume the currently paused song."""
         vc = interaction.guild.voice_client
 
@@ -404,8 +389,8 @@ class Music(commands.Cog):
         vc.resume()
         await interaction.send(f'**`{interaction.user}`**: Resumed the song!')
 
-    @nextcord.slash_command(name='skip', guild_ids=[890026104277057577], force_global=True)
-    async def skip_(self, interaction: Interaction):
+    @music.subcommand(description='placeholder')
+    async def skip(self, interaction: Interaction):
         """Skip the song."""
         vc = interaction.guild.voice_client
 
@@ -423,8 +408,8 @@ class Music(commands.Cog):
         vc.stop()
         await interaction.send(f'**`{interaction.user}`**: Skipped the song!')
 
-    @nextcord.slash_command(name='loop', guild_ids=[890026104277057577], force_global=True)
-    async def loop_(self, interaction: Interaction):
+    @music.subcommand(description='placeholder')
+    async def loop(self, interaction: Interaction):
         """Loop the currently playing song."""
         vc = interaction.guild.voice_client
 
@@ -440,7 +425,7 @@ class Music(commands.Cog):
             player.loop = False
             await interaction.send('Disabled looping the current song!')
 
-    @nextcord.slash_command(name='queue', guild_ids=[890026104277057577], force_global=True, description='Retrieve a basic queue of upcoming songs')
+    @music.subcommand(description='placeholder')
     async def queue_info(self, interaction,
         page: int = SlashOption(required=False, default=1)
     ):
@@ -474,7 +459,7 @@ class Music(commands.Cog):
         embed.set_footer(text=f'Page {page}/{ceil(max_index/5)}')
         await interaction.send(embed=embed)
 
-    @nextcord.slash_command(name='move', guild_ids=[890026104277057577], force_global=True)
+    @music.subcommand(description='placeholder')
     async def move(self, interaction, i: int, j: int):
 
         vc = interaction.guild.voice_client
@@ -491,7 +476,7 @@ class Music(commands.Cog):
         else:
             await interaction.send('Out of index!')
 
-    @nextcord.slash_command(name='shuffle', guild_ids=[890026104277057577], force_global=True)
+    @music.subcommand(name='shuffle', description='placeholder')
     async def shuffle_(self, interaction: Interaction):
         vc = interaction.guild.voice_client
 
@@ -505,7 +490,7 @@ class Music(commands.Cog):
         shuffle(player.queue._queue)
         await interaction.send('✅') # white_check_mark
 
-    @nextcord.slash_command(name='remove', guild_ids=[890026104277057577], force_global=True)
+    @music.subcommand(description='placeholder')
     async def remove(self, interaction, index: int):
         """Remove song from queue"""
         player = self.get_player(interaction)
@@ -518,8 +503,8 @@ class Music(commands.Cog):
 
         await interaction.send(f'**`{interaction.user}`**: Removed `{title}` from queue')
 
-    @nextcord.slash_command(name='nowplaying', guild_ids=[890026104277057577], force_global=True)
-    async def now_playing_(self, interaction: Interaction):
+    @music.subcommand(description='placeholder')
+    async def now_playing(self, interaction: Interaction):
         """Display info about current song."""
         vc = interaction.guild.voice_client
 
@@ -532,8 +517,8 @@ class Music(commands.Cog):
 
         await interaction.send(embed=player.np)
 
-    @nextcord.slash_command(name='volume', guild_ids=[890026104277057577], force_global=True)
-    async def change_volume(self, interaction, *, vol: float):
+    @music.subcommand(description='placeholder')
+    async def volume(self, interaction, *, vol: float):
         """Change the player volume.
         Parameters
         ------------
@@ -556,8 +541,8 @@ class Music(commands.Cog):
         player.volume = vol / 100
         await interaction.send(f'Set the volume to **{vol}%**')
 
-    @nextcord.slash_command(name='stop', guild_ids=[890026104277057577], force_global=True)
-    async def stop_(self, interaction: Interaction):
+    @music.subcommand(description='placeholder')
+    async def stop(self, interaction: Interaction):
 
         vc = interaction.guild.voice_client
 
@@ -565,7 +550,22 @@ class Music(commands.Cog):
             return await interaction.send('I am not currently playing anything!', delete_after=10)
 
         await self.cleanup(interaction.guild)
+        await interaction.send('byeee')
 
+    @music.subcommand(description='placeholder')
+    async def clear(self, interaction: Interaction):
+        
+        vc = interaction.guild.voice_client
+
+        if not vc or not vc.is_connected():
+            return await interaction.send('I am not currently playing anything!', delete_after=10)
+
+        player = self.get_player(interaction)
+        if not player.current:
+            return await interaction.send('I am not currently playing anything!')
+
+        player.queue._queue.clear()
+        await interaction.send('✅')
 
 def setup(bot):
     bot.add_cog(Music(bot))
