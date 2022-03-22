@@ -25,6 +25,7 @@ class Nameless(commands.Bot):
 
     def run(self, test=False):
         self.load_extension('cogs.music')
+        self.load_extension('cogs.nhentai')
         # More module coming soon!!!
 
         try:
@@ -45,4 +46,4 @@ class Nameless(commands.Bot):
 
 bot = Nameless()
 # change `test` to True for running with test token
-bot.run(test=True)
+bot.run(test=False)
