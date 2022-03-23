@@ -211,16 +211,15 @@ class MusicPlayer:
 
                 if not self._loop or self.source is None:
                     self.source = await self.queue.get()
+                    
+                    self.np = embed_(title=f'Nowplaying', footer=f'Requested by {self.source["requester"]}',
+                                     description=f'[{self.source["title"]}]({self.source["webpage_url"]})')
+                    await self._channel.send(embed=self.np)
 
                 self.current = await YTDLSource.regather_stream(self.source, loop=self.client.loop)
                 self.current.volume = self.volume
 
                 self._guild.voice_client.play(self.current, after=lambda _: self.client.loop.call_soon_threadsafe(self.next.set))
-
-                if not self._loop:
-                    self.np = embed_(title=f'Nowplaying', footer=f"Requested by {self.current.requester}",
-                                     description=f'[{self.current.title}]({self.current.webpage_url})')
-                    await self._channel.send(embed=self.np)
 
                 self.totaldura -= self.source['duration']
             
@@ -236,8 +235,8 @@ class MusicPlayer:
                 await self.next.wait()
 
                 # Make sure the FFmpeg process is cleaned up.
-                self.current = None
                 self.current.cleanup()
+                self.current = None
                 print('release', gc.collect())
 
     
@@ -366,28 +365,20 @@ class Music(commands.Cog):
         """Pause the currently playing song."""
         vc = interaction.guild.voice_client
 
-        if not vc:
+        if not vc or not vc.is_connected():
             return await interaction.send('I am currently not in any voice chat!', delete_after=20)
 
-        if vc.is_paused and vc.current is None:
+        if vc.source is None:
             return await interaction.send('I am not currently playing anything!', delete_after=20)
 
-        vc.pause()
-        await interaction.send(f'**`{interaction.user}`**: Paused the song!')
+        if vc.is_paused():
+            vc.resume()
+            action = 'Resumed'
+        else:
+            vc.pause()
+            action = 'Paused'
 
-    @music.subcommand(description='placeholder')
-    async def resume(self, interaction: Interaction):
-        """Resume the currently paused song."""
-        vc = interaction.guild.voice_client
-
-        if not vc or not vc.is_connected():
-            await interaction.send('I am not currently playing anything!', delete_after=20)
-            return
-        elif not vc.is_paused():
-            return
-
-        vc.resume()
-        await interaction.send(f'**`{interaction.user}`**: Resumed the song!')
+        await interaction.send(f'**`{interaction.user}`**: {action} the song!')
 
     @music.subcommand(description='placeholder')
     async def skip(self, interaction: Interaction):
@@ -403,7 +394,8 @@ class Music(commands.Cog):
             return
 
         player = self.get_player(interaction)
-        player.source = None
+        if player.loop:
+            player.source = None
 
         vc.stop()
         await interaction.send(f'**`{interaction.user}`**: Skipped the song!')
