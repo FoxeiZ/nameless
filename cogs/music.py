@@ -35,6 +35,7 @@ ffmpegopts = {
 ytdl = YoutubeDL(ytdlopts)
 color = choice((0xdb314b, 0xdb3a4c, 0xdb424d, 0xdb354b))
 
+
 def embed_(**kwargs):
 
     embed = nextcord.Embed(title=kwargs['title'], color=color,
@@ -64,21 +65,22 @@ class InvalidVoiceChannel(VoiceConnectionError):
 class Dropdown(nextcord.ui.Select):
 
     def __init__(self, data = None):
-        
+
         options = []
+        options.append(nextcord.SelectOption(label='Select all', value='All', description='Selected items from above will be exclude from playlist'))
         for index, item in enumerate(data):
             options.append(nextcord.SelectOption(label=item['title'], description=item['url'], value=index))
-        options.append(nextcord.SelectOption(label='Select all', value='All', description='Selected items from above will be exclude from playlist'))
 
         super().__init__(placeholder='owo', min_values=1, max_values=len(options), options=options)
-    
+
     async def callback(self, interaction: Interaction):
         self._view.stop()
+
 
 class YTDLSource(nextcord.PCMVolumeTransformer):
 
     __slots__ = ('source', 'requester', 'webpage_url', 'title', 'duration', 'thumbnail')
-    
+
     def __init__(self, source = None, *, data, requester):
 
         super().__init__(source)
@@ -91,7 +93,7 @@ class YTDLSource(nextcord.PCMVolumeTransformer):
 
     @classmethod
     async def create_source(cls, interaction, search, loop, imported=False, picker=False):
-        
+
         loop = loop or asyncio.get_event_loop()
 
         to_run = partial(ytdl.extract_info, url=search, download=False)
@@ -107,8 +109,8 @@ class YTDLSource(nextcord.PCMVolumeTransformer):
 
                 view = nextcord.ui.View(timeout=30)
                 view.add_item(Dropdown(data['entries']))
-                
-                msg = await interaction.send('Chon nhac di tml', view=view)
+
+                msg = await interaction.send('Pick a song, or multiple ones if you want.', view=view)
 
                 if await view.wait():
                     await msg.edit(content='Timeout!', view=None, delete_after=10)
@@ -123,11 +125,8 @@ class YTDLSource(nextcord.PCMVolumeTransformer):
                 else:
                     values = view.children[0].values
 
-                await msg.edit(view=None,
-                        embed=Embed(
-                            title=f'Added {len(values)} songs',
-                            description=f'Requested by {interaction.user}')
-                    )
+                await msg.edit(view=None, embed=Embed(title=f'Added {len(values)} songs',
+                                                      description=f'Requested by {interaction.user}'))
 
                 for i in values:
                     yield cls.to_value(data['entries'][int(i)], interaction.user)
@@ -161,7 +160,7 @@ class YTDLSource(nextcord.PCMVolumeTransformer):
         data = ytdl.sanitize_info(data)
 
         return cls(nextcord.FFmpegPCMAudio(data['url'], **ffmpegopts), data=data, requester=requester)
-    
+
 
 class MusicPlayer:
     """A class which is assigned to each guild using the client for Music.
@@ -173,23 +172,23 @@ class MusicPlayer:
     """
     __slots__ = ('interaction', '_loop', 'client', '_guild', '_channel', '_cog', 'queue',
                  'next', 'current', 'np', 'volume', 'totaldura', 'task', 'source')
-    
+
     def __init__(self, interaction: Interaction, cog = None):
         self.client = interaction.client
         self._guild = interaction.guild
         self._channel = interaction.channel
         self._cog = cog
-        
+
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
-        
+
         self.np = None
         self.volume = 0.5
         self.current = None
         self.source = None
         self.totaldura = 0
         self._loop = False
-        
+
         self.task = interaction.client.loop.create_task(self.player_loop())
 
     @property
@@ -199,10 +198,10 @@ class MusicPlayer:
     @loop.setter
     def loop(self, value: bool):
         self._loop = value
-    
+
     async def player_loop(self):
         """Our main player loop."""
-        
+
         await self.client.wait_until_ready()
 
         while not self.client.is_closed():
@@ -211,7 +210,7 @@ class MusicPlayer:
 
                 if not self._loop or self.source is None:
                     self.source = await self.queue.get()
-                    
+
                     self.np = embed_(title=f'Nowplaying', footer=f'Requested by {self.source["requester"]}',
                                      description=f'[{self.source["title"]}]({self.source["webpage_url"]})')
                     await self._channel.send(embed=self.np)
@@ -222,7 +221,7 @@ class MusicPlayer:
                 self._guild.voice_client.play(self.current, after=lambda _: self.client.loop.call_soon_threadsafe(self.next.set))
 
                 self.totaldura -= self.source['duration']
-            
+
             except AttributeError as e:
                 print(self._guild.id, str(e))
                 return self.destroy(self._guild)
@@ -230,16 +229,15 @@ class MusicPlayer:
             except Exception as e:
                 return await self._channel.send(f'There was an error processing your song.\n'
                                                 f'```css\n[{e}]\n```')
-            
+
             finally:
                 await self.next.wait()
 
                 # Make sure the FFmpeg process is cleaned up.
                 self.current.cleanup()
                 self.current = None
-                print('release', gc.collect())
+                print(f'after music, release: {gc.collect()} objects')
 
-    
     def destroy(self, guild):
         """Disconnect and cleanup the player."""
         return self.client.loop.create_task(self._cog.cleanup(guild))
@@ -249,12 +247,12 @@ class Music(commands.Cog):
     """Music related commands."""
 
     __slots__ = ('client', 'players', 'db')
-    
+
     def __init__(self, client):
         self.client = client
         self.players = {}
         self.db = client.db.nextcord.playlist
- 
+
     async def cleanup(self, guild):
         try:
             await guild.voice_client.disconnect()
@@ -263,13 +261,13 @@ class Music(commands.Cog):
 
         try:
             player = self.players[guild.id]
-            print(player.task.cancel())
+            player.task.cancel()
         except asyncio.CancelledError:
             pass
 
         try:
             del self.players[guild.id]
-            print('release', gc.collect())
+            print(f'cleanup guild, release: {gc.collect()} objects')
         except KeyError:
             pass
 
@@ -282,7 +280,7 @@ class Music(commands.Cog):
             self.players[interaction.guild.id] = player
 
         return player
-    
+
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         """Destroy player when no one in voice chat"""
@@ -293,17 +291,18 @@ class Music(commands.Cog):
 
         try:
             if len(player._guild.voice_client.channel.members) == 1: # If bot is alone
-                await self.cleanup(player._guild)
-                await player._channel.send('Hic. Don\'t leave me alone :cry:')
-        except AttributeError:
+                if player._guild.voice_client.channel.members[0].id == self.client.id:
+                    await self.cleanup(player._guild)
+                    await player._channel.send('Hic. Don\'t leave me alone :cry:')
+        except AttributeError:  # bot got kicked out
             await self.cleanup(player._guild)
 
-    @nextcord.slash_command(guild_ids=[890026104277057577], description="moozic command")
+    @nextcord.slash_command(guild_ids=[957564051641217034], description="moozic command", force_global=True)
     async def music(interaction: nextcord.Interaction):
         pass
-    
+
     @music.subcommand(description='placeholder')
-    async def connect(self, interaction: Interaction, 
+    async def connect(self, interaction: Interaction,
         channel: nextcord.abc.GuildChannel = SlashOption(name='channel', description='Join where?', required=False, channel_types=[nextcord.ChannelType.voice])
     ):
         """Connect to voice.
@@ -346,7 +345,7 @@ class Music(commands.Cog):
     ):
 
         await interaction.response.defer()
-        
+
         vc = interaction.guild.voice_client
         try:
             if not vc:
@@ -546,7 +545,7 @@ class Music(commands.Cog):
 
     @music.subcommand(description='placeholder')
     async def clear(self, interaction: Interaction):
-        
+
         vc = interaction.guild.voice_client
 
         if not vc or not vc.is_connected():
@@ -558,6 +557,10 @@ class Music(commands.Cog):
 
         player.queue._queue.clear()
         await interaction.send('✅')
+
+    @music.subcommand(description='placeholder')
+    async def placeholder(self, interaction):
+        await interaction.send(self.db)
 
 def setup(bot):
     bot.add_cog(Music(bot))
