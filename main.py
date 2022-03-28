@@ -37,4 +37,4 @@ class Nameless(commands.Bot):
 
 
 # change `test` to True for running with test token
-Nameless().run(test=True)
+Nameless().run(test=False)
