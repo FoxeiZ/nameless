@@ -1,4 +1,3 @@
-
 DISCORD = {
     "token": "",
     "activity": {
