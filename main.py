@@ -13,15 +13,7 @@ class Nameless(commands.Bot):
     def __init__(self):
         super().__init__(intents=intents)
         self.token = DISCORD['token']
-        self._db = None
-
-    @property
-    def db(self):
-        if self._db is None:
-            self._db = motor.motor_asyncio.AsyncIOMotorClient(MONGODB['uri'])
-            return self._db
-        else:
-            return self._db
+        self.db = motor.motor_asyncio.AsyncIOMotorClient(MONGODB['uri'])
 
     def run(self, test=False):
         self.load_extension('cogs.music')
@@ -44,6 +36,5 @@ class Nameless(commands.Bot):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
 
 
-bot = Nameless()
 # change `test` to True for running with test token
-bot.run(test=False)
+Nameless().run(test=True)
