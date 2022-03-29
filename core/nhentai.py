@@ -4,10 +4,17 @@ import reprlib
 
 
 class nhentaiException(Exception):
+    """idk"""
     pass
 
 
 class nhentaiNoContent(Exception):
+    """self explain sooo..."""
+    pass
+
+
+class TheForbiddenTag(Exception):
+    """If the tag is blacklisted, this expectation will be called."""
     pass
 
 
@@ -51,6 +58,8 @@ class nhentaiContainer:
             elif tag['type'] == 'parody':
                 self.parody = tag
             else:
+                if tag['name'] == 'lolicon':
+                    continue
                 self.tags.append(tag)
 
     def __str__(self) -> str:

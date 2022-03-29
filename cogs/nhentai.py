@@ -131,12 +131,11 @@ class Nhentai(commands.Cog):
             pass
 
         try:
-            ret = await self.api.getByID(sauce)
+            doujin = await self.api.getByID(sauce)
         except nhentaiNoContent:
-            await interaction.send('Can\'t find any !!')
-            return
+            return await interaction.send('Can\'t find any !!')
 
-        paginator = Paginator(ret)
+        paginator = Paginator(doujin)
         message = await interaction.send(embed=paginator.pages[0], view=paginator)
         paginator.set_message(message)
 
@@ -156,7 +155,10 @@ class Nhentai(commands.Cog):
             pass
         message = await interaction.send('Please wait...')
 
-        doujin = await self.api.getByID(id=sauce)
+        try:
+            doujin = await self.api.getByID(sauce)
+        except nhentaiNoContent:
+            return await message.edit('Can\'t find any !!')
 
         embed = Embed(title=doujin.title_prt, description=f'sauceid: {doujin.id}', url=doujin.url, color=0x00ff00)
         embed.set_image(url=doujin.cover['url'])
@@ -200,7 +202,11 @@ class Nhentai(commands.Cog):
         tags = tags.replace(' ,', ',').replace(', ', ',')
         tags = tags.split(',')
 
-        resp = await self.api.searchByTag(tags)
+        try:
+            resp = await self.api.getByID(sauce)
+        except nhentaiNoContent:
+            return await message.edit('Can\'t find any !!')
+
         if len(resp) == 0:
             return await message.edit(content='Nothing found for this sauce. Sorry', delete_after=20)
 
