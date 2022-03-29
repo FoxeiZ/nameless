@@ -125,6 +125,9 @@ class Nhentai(commands.Cog):
     async def read(self, interaction: Interaction,
         sauce: int = SlashOption(description='Give me da sauce', required=True)
     ):
+        if not interaction.channel.is_nsfw():  # manual check since nextcord doesnt support check decorator
+            return
+
         try:
             await interaction.response.defer()
         except nextcord.InteractionResponded:
@@ -148,6 +151,8 @@ class Nhentai(commands.Cog):
     async def info(self, interaction: Interaction,
         sauce: int = SlashOption(description='Give me da sauce', required=True)
     ):
+        if not interaction.channel.is_nsfw():
+            return
 
         try:
             await interaction.response.defer()
@@ -180,6 +185,9 @@ class Nhentai(commands.Cog):
     @nhentai.subcommand(description='get random sauce for you to coom')
     async def random(self, interaction: Interaction):
 
+        if not interaction.channel.is_nsfw():
+            return
+
         try:
             await interaction.response.defer()
         except nextcord.InteractionResponded:
@@ -193,6 +201,9 @@ class Nhentai(commands.Cog):
     async def search(self, interaction: Interaction,
         tags: str = SlashOption(required=True, description='Seperate each tag using a comma')
     ):
+        if not interaction.channel.is_nsfw():
+            return
+
         try:
             await interaction.response.defer()
         except nextcord.InteractionResponded:
