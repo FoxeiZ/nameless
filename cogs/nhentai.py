@@ -126,7 +126,7 @@ class Nhentai(commands.Cog):
         sauce: int = SlashOption(description='Give me da sauce', required=True)
     ):
         if not interaction.channel.is_nsfw():  # manual check since nextcord doesnt support check decorator
-            return
+            return await interaction.send('Use in NSFW channel only', ephemeral=True)
 
         try:
             await interaction.response.defer()
@@ -152,7 +152,7 @@ class Nhentai(commands.Cog):
         sauce: int = SlashOption(description='Give me da sauce', required=True)
     ):
         if not interaction.channel.is_nsfw():
-            return
+            return await interaction.send('Use in NSFW channel only', ephemeral=True)
 
         try:
             await interaction.response.defer()
@@ -186,7 +186,7 @@ class Nhentai(commands.Cog):
     async def random(self, interaction: Interaction):
 
         if not interaction.channel.is_nsfw():
-            return
+            return await interaction.send('Use in NSFW channel only', ephemeral=True)
 
         try:
             await interaction.response.defer()
@@ -202,7 +202,7 @@ class Nhentai(commands.Cog):
         tags: str = SlashOption(required=True, description='Seperate each tag using a comma')
     ):
         if not interaction.channel.is_nsfw():
-            return
+            return await interaction.send('Use in NSFW channel only', ephemeral=True)
 
         try:
             await interaction.response.defer()
