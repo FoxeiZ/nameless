@@ -17,6 +17,7 @@ class Nameless(commands.Bot):
 
     def run(self, test=False):
         self.load_extension('cogs.music')
+        self.load_extension('cogs.waifu')
         self.load_extension('cogs.nhentai')
         # More module coming soon!!!
 
